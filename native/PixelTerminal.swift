@@ -2,7 +2,7 @@ import AppKit
 import WebKit
 import CryptoKit
 
-let buildID = "2026-10-02-native-r11"
+let buildID = "2026-10-02-native-r12"
 func sha256(_ url: URL) -> String { ((try? Data(contentsOf: url)).map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() }) ?? "unavailable" }
 final class CompanionWindow: NSWindow { override var canBecomeKey: Bool { true }; override var canBecomeMain: Bool { true } }
 
@@ -46,6 +46,7 @@ final class Companion: NSObject, NSApplicationDelegate, WKNavigationDelegate, NS
         item("全屏／退出全屏", #selector(fullscreen), "f")
         appMenu.addItem(.separator())
         item("动画预览（八种示例状态）", #selector(validateAnimations))
+        item("小动作预览（五种）", #selector(validateMoments))
         item("返回实时额度", #selector(returnToLive))
         appMenu.addItem(.separator())
         let hide = NSMenuItem(title: "隐藏 Codex 小幽灵", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
@@ -150,7 +151,11 @@ final class Companion: NSObject, NSApplicationDelegate, WKNavigationDelegate, NS
             }
         }
     }
-    @objc func returnToLive() { validating = false; update(["progress": latest.map { $0.displayed } as Any? ?? NSNull(), "date": NSNull(), "time": NSNull()]); refresh() }
+    @objc func returnToLive() {
+        validating = false
+        web.evaluateJavaScript("window.pixelTerminal.stopMomentPreview()", completionHandler: nil)
+        update(["progress": latest.map { $0.displayed } as Any? ?? NSNull(), "date": NSNull(), "time": NSNull()]); refresh()
+    }
     @objc func fullscreen() { window.toggleFullScreen(nil) }
     func window(_ window: NSWindow, willUseFullScreenPresentationOptions proposedOptions: NSApplication.PresentationOptions) -> NSApplication.PresentationOptions {
         proposedOptions.union([.autoHideMenuBar, .autoHideDock])
@@ -169,6 +174,61 @@ final class Companion: NSObject, NSApplicationDelegate, WKNavigationDelegate, NS
         guard ready, !validating else { return }; validating = true; rows = []
         try? FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
         event(["event": "animation_validation_started", "synthetic": true]); validateState(0)
+    }
+    // The same live rAF path drives these five short, explicitly synthetic moments.
+    // Actual host snapshots are taken before, during and after each action.
+    @objc func validateMoments() {
+        guard ready, !validating else { return }; validating = true; rows = []
+        try? FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
+        event(["event": "moments_validation_started", "synthetic": true]); validateMoment(0)
+    }
+    func validateMoment(_ index: Int) {
+        guard validating else { return }
+        let kinds = ["apple-bite", "shy-kiss", "sleepy-yawn", "little-wave", "playful-wink"]
+        if index == kinds.count {
+            write(["build": buildID, "observed_at": ISO8601DateFormatter().string(from: Date()), "renderer": "native WKWebView", "moments": rows], "moments-check.json", at: evidence)
+            event(["event": "moments_validation_finished", "moments": rows.count]); returnToLive(); return
+        }
+        let kind = kinds[index], p = index < 2 ? 30 : 65, time = index == 2 ? "23:41" : "13:41", label = "moment-" + kind
+        update(["progress": p, "date": "2026-10-2", "time": time]) { _, error in
+            guard self.validating else { return }
+            if error != nil { self.rows.append(["moment": kind, "error": "state_update_failed"]); self.validateMoment(index+1); return }
+            self.web.evaluateJavaScript("window.pixelTerminal.startMomentPreview('\(kind)')") { _, error in
+                if error != nil { self.rows.append(["moment": kind, "error": "preview_start_failed"]); self.validateMoment(index+1); return }
+                DispatchQueue.main.asyncAfter(deadline: .now()+0.3) {
+                    guard self.validating else { return }
+                    self.capture(label+"-a") { a in
+                        self.web.evaluateJavaScript("document.getElementById('terminal').innerHTML") { svgA, _ in
+                            DispatchQueue.main.asyncAfter(deadline: .now()+1.9) {
+                                guard self.validating else { return }
+                                self.capture(label+"-b") { b in
+                                    self.web.evaluateJavaScript("JSON.stringify({state:window.pixelTerminal.getState(),moment:window.pixelTerminal.getMomentStatus(),svg:document.getElementById('terminal').innerHTML,reduced:matchMedia('(prefers-reduced-motion: reduce)').matches})") { value, _ in
+                                        let object = (value as? String).flatMap { $0.data(using: .utf8) }.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
+                                        let svgB = object?["svg"] as? String
+                                        DispatchQueue.main.asyncAfter(deadline: .now()+6.0) {
+                                            guard self.validating else { return }
+                                            self.capture(label+"-c") { c in
+                                                self.web.evaluateJavaScript("JSON.stringify({state:window.pixelTerminal.getState(),moment:window.pixelTerminal.getMomentStatus(),svg:document.getElementById('terminal').innerHTML})") { final, _ in
+                                                    let after = (final as? String).flatMap { $0.data(using: .utf8) }.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
+                                                    self.rows.append(["moment": kind, "progress": p, "time": time, "synthetic": true,
+                                                        "readback": object?["state"] ?? NSNull(), "active_status": object?["moment"] ?? NSNull(),
+                                                        "reduced_motion": object?["reduced"] ?? NSNull(), "after_status": after?["moment"] ?? NSNull(),
+                                                        "after_readback": after?["state"] ?? NSNull(), "active_marker_observed": svgB?.contains("data-moment=\"\(kind)\"") ?? false,
+                                                        "returned_to_ordinary": !((after?["svg"] as? String)?.contains("data-moment=") ?? true),
+                                                        "svg_changed": (svgA as? String) != svgB, "snapshot_a": a ?? "failed", "snapshot_b": b ?? "failed", "snapshot_c": c ?? "failed",
+                                                        "sample_delays_seconds": [0.3,2.2,8.2]])
+                                                    self.validateMoment(index+1)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
     func validateState(_ index: Int) {
         guard validating else { return }
