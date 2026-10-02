@@ -1,0 +1,19 @@
+# Builds, runtime state, dependencies, and local acceptance evidence
+build/
+node_modules/
+*.app/
+.DS_Store
+*.log
+*.zip
+.env
+.env.*
+/STATUS.md
+/native-qa.json
+/r4-sampling-observation.json
+/apple-preview.png
+/animated-preview.gif
+/preview.svg
+/preview.png
+/states.png
+/state-*.png
+/icon-preview.png

@@ -1,0 +1,15 @@
+{
+  "name": "codex-ghost",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A quiet pixel ghost companion for Codex weekly quota on macOS",
+  "scripts": {
+    "test": "node tests/render.mjs",
+    "preview": "node render-preview.cjs --hero",
+    "build": "bash build-app.sh"
+  },
+  "devDependencies": {
+    "sharp": "0.35.4"
+  },
+  "license": "MIT"
+}

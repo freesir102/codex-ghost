@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>像素陪伴终端</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}svg{display:block;width:100%;height:100%;shape-rendering:crispEdges;image-rendering:pixelated}
+</style>
+</head>
+<body>
+<svg id="terminal" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="像素陪伴终端设计原型：示例进度、当地日期与时间"></svg>
+<script>
+// Independent state: progress is a design sample, not an account quota or task observation.
+const state={progress:65,date:null,time:null};
+const layout={date:{x:340,y:20,w:800,h:64},ghost:{x:64,y:180,w:464,h:440},percent:{x:630,y:180,w:570,h:180},time:{x:630,y:448,w:570,h:180}};
+const color={background:'#000000',white:'#ffffff',cyan:'#28e4eb',pink:'#ff789c',yellow:'#ffd65b'};
+const font={
+'0':['01110','11011','11011','11011','11011','11011','01110'],'1':['00110','01110','00110','00110','00110','00110','01111'],
+'2':['01110','11011','00011','00110','01100','11000','11111'],'3':['11110','00011','00011','01110','00011','00011','11110'],
+'4':['00011','00111','01111','11011','11111','00011','00011'],'5':['11111','11000','11000','11110','00011','00011','11110'],
+'6':['01110','11000','11000','11110','11011','11011','01110'],'7':['11111','00011','00110','00110','01100','01100','01100'],
+'8':['01110','11011','11011','01110','11011','11011','01110'],'9':['01110','11011','11011','01111','00011','00011','01110'],
+':':['0','1','1','0','1','1','0'],'%':['11001','11011','00010','00100','01000','11011','10011'],
+'-':['000','000','000','111','000','000','000']};
+const rect=(x,y,w,h,fill=color.white)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`;
+function textPixels(text,box,unit){
+ const width=([...text].reduce((n,c)=>n+font[c][0].length,0)+(text.length-1)*2)*unit;
+ let x=box.x+(box.w-width)/2,y=box.y+(box.h-unit*7)/2,out='';
+ for(const ch of text){font[ch].forEach((row,dy)=>[...row].forEach((p,dx)=>{if(p==='1')out+=rect(x+dx*unit,y+dy*unit,unit,unit);}));x+=(font[ch][0].length+2)*unit;}return out;
+}
+function pixelFrame(b){
+ const t=14,c=color.cyan;let s='';
+ // Thick square pixel dashes; no smooth outlines or lighting effects.
+ for(const [x,y,sx,sy]of[[b.x,b.y,1,1],[b.x+b.w-t,b.y,-1,1],[b.x,b.y+b.h-t,1,-1],[b.x+b.w-t,b.y+b.h-t,-1,-1]])s+=rect(x+sx*t,y,t*2,t,c)+rect(x,y+sy*t,t,t*2,c);
+ for(let x=b.x+48;x<b.x+b.w-48;x+=64){const w=Math.min(32,b.x+b.w-48-x);s+=rect(x,b.y,w,t,c)+rect(x,b.y+b.h-t,w,t,c);}
+ for(let y=b.y+48;y<b.y+b.h-48;y+=52){const h=Math.min(26,b.y+b.h-48-y);s+=rect(b.x,y,t,h,c)+rect(b.x+b.w-t,y,t,h,c);}return s;
+}
+function dateComponent(date){return `<g data-component="date">${textPixels(date,layout.date,8)}</g>`;}
+function percentComponent(progress){return `<g data-component="percent">${pixelFrame(layout.percent)}${textPixels(`${progress===null?'--':progress}%`,layout.percent,18)}</g>`;}
+function timeComponent(time){return `<g data-component="time">${pixelFrame(layout.time)}${textPixels(time,layout.time,16)}</g>`;}
+function progressState(p){return p===100?'celebrating':p>=80?'flag':p>=50?'floating':'apple';}
+function timeState(time){const h=Number(time.slice(0,2));return h>=20||h<7?'night':'day';}
+function heart(x,y,seconds=0,reduced=false){
+ const pulse=reduced?0:Math.floor(seconds/.7)%2,u=12+pulse;
+ let s=`<g data-accessory="heart" data-pulse="${pulse}">`;
+ ['01010','11111','11111','01110','00100'].forEach((row,j)=>[...row].forEach((p,i)=>{if(p==='1')s+=rect(x-2*pulse+i*u,y-2*pulse+j*u,u,u,color.pink);}));return s+'</g>';
+}
+function daylightComponent(time,seconds=0,reduced=false){
+ const night=timeState(time)==='night';
+ if(night){let s='<g data-component="daylight" data-symbol="moon">';['0011100','0111000','1110000','1110000','1110001','0111011','0011110'].forEach((row,y)=>[...row].forEach((p,x)=>{if(p==='1')s+=rect(92+x*12,178+y*12,12,12,color.yellow);}));return s+'</g>';}
+ // Four rays orbit clockwise on a square pixel ring; the center never rotates.
+ const ring=[[3,0],[4,0],[5,1],[6,2],[6,3],[6,4],[5,5],[4,6],[3,6],[2,6],[1,5],[0,4],[0,3],[0,2],[1,1],[2,0]],phase=reduced?0:Math.floor(seconds/.5)%16;
+ let s=`<g data-component="daylight" data-symbol="sun" data-orbit-phase="${phase}">`;
+ s+=rect(92+2*12,178+2*12,3*12,3*12,color.yellow);
+ for(let i=0;i<4;i++){const [x,y]=ring[(phase+i*4)%16];s+=rect(92+x*12,178+y*12,12,12,color.yellow);}
+ return s+'</g>';
+}
+function sleepCap(low){return `<g data-accessory="sleep-cap" transform="translate(0 ${low?2:0})"><path d="M10 1V0h2v-2h2v-1h7v1h2v1h1v2h1v2h-2V1h-4V0h-4v1z" fill="#79b5f2"/><path d="M9 1h4V0h5v1h4v1h-7V1H9z" fill="#ffffff"/><path d="M9 2h5V1h4v1h4v1h-7V2H9z" fill="#000000"/>${rect(24,1,2,2)}</g>`;}
+function ghostComponent(p,time,seconds=0,reduced=false){
+ const posture=progressState(p),night=timeState(time)==='night',low=posture==='apple';
+ const motion=reduced?0:Math.round(Math.sin(seconds*(low?1.2:1.5))*(low?1:2));
+ const x=104,y=246+motion,u=12;
+ let s=`<g data-component="ghost" data-posture="${posture}" data-time-state="${night?'night':'day'}" transform="translate(${x} ${y}) scale(${u})">`;
+ s+=`<path d="M10 1h8v1h3v1h2v2h1v3h1v14h-2v2h-3v-1h-2v2h-3v-2h-3v1H9v-1H7v-2H5V10h1V7h1V4h1V3h2z" fill="#ffffff"/>`;
+ const armLift=reduced?0:Math.round((Math.sin(seconds*1.4)+1)/2);
+ if(!low){s+=`<path d="M5 14H3v1H2v3h1v1h3z" fill="#ffffff"/>`;
+ s+=`<g transform="translate(0 ${-armLift/12})"><path d="M24 13h2v-2h2v1h1v3h-1v2h-4z" fill="#ffffff"/></g>`;}
+ const faceY=9,blink=!reduced&&seconds%7.4>7.2;
+ function eye(ex,ey,mode){if(blink||mode==='closed')return rect(ex,ey+1,1,1,'#000000')+rect(ex+1,ey+2,2,1,'#000000')+rect(ex+3,ey+1,1,1,'#000000');
+ if(mode==='open')return rect(ex,ey,3,3,'#000000')+rect(ex+1,ey,1,1);
+ return rect(ex+1,ey,2,1,'#000000')+rect(ex,ey+1,1,2,'#000000')+rect(ex+3,ey+1,1,2,'#000000');}
+ if(low){s+=rect(10,faceY,2,1,'#000000')+rect(19,faceY,2,1,'#000000');}
+ else if(posture==='flag'){s+=eye(9,faceY,'open')+rect(20,faceY,1,1,'#000000')+rect(21,faceY+1,1,1,'#000000')+rect(19,faceY+2,2,1,'#000000');}
+ else s+=eye(9,faceY,night&&posture==='floating'?'closed':'happy')+eye(18,faceY,night&&posture==='floating'?'closed':'happy');
+ s+=rect(8,faceY+3,3,1,color.pink)+rect(21,faceY+3,2,1,color.pink);
+ if(low&&!reduced&&Math.floor(seconds/2)%2===1){s+='<g data-expression="kiss">';['1110','0001','0110','0001','1110'].forEach((row,j)=>[...row].forEach((v,i)=>{if(v==='1')s+=rect(14+i,faceY+3+j,1,1,'#000000');}));s+='</g>';}
+ else if(!low&&!(night&&posture==='floating'))s+=rect(14,faceY+3,4,3,'#000000')+rect(15,faceY+5,2,1,color.pink);
+ else s+=rect(14,faceY+3,1,1,'#000000')+rect(15,faceY+4,2,1,'#000000')+rect(17,faceY+3,1,1,'#000000');
+ if(low){
+ const lift=reduced?0:Math.round((Math.sin(seconds*1.1)+1)/2);
+ // An unmistakable pixel apple, held below the face; no cup or steam.
+ s+=`<g data-accessory="apple" transform="translate(0 ${-lift/12})">`;
+ s+=rect(15,16,1,2,'#895b36');
+ ['00111011100','01111111110','11111111111','11111111111','11111111111','11111111111','11111111111','01111111110','00111111100'].forEach((row,j)=>[...row].forEach((v,i)=>{if(v==='1')s+=rect(10+i,18+j,1,1,'#ef4545');}));
+ s+=rect(12,19,1,2);
+ s+='</g>';
+ }
+ if(posture==='flag'){
+ const ripple=reduced?0:Math.round(Math.sin(seconds*1.8)*2);
+ s+=`<g data-accessory="flag">${rect(27,-1,1,18)}<path d="M28 0h2V1h3v1h2v1h-2v1h-2v1h-3z" fill="#ef4545" transform="translate(${ripple/12} 0)"/></g>`;
+ s+=rect(3,6,.5,1)+rect(2,8,1,.5);
+ }
+ if(night)s+=sleepCap(false);
+ s+='</g>'+heart(x+29*u,y+7*u,seconds,reduced);
+ if(posture==='celebrating'){
+ const dy=reduced?0:Math.round(Math.sin(seconds*1.2));let star=`<g data-accessory="star" transform="translate(0 ${dy})">`;
+ ['0001000','0001000','0011100','1111111','0011100','0001000','0001000'].forEach((row,j)=>[...row].forEach((v,i)=>{if(v==='1')star+=rect(428+i*6,220+j*6,6,6,color.yellow);}));s+=star+'</g>';
+ }return s;
+}
+function normalizeState(next,base=state){
+ const s={...base,...next};
+ if(s.progress!==null&&(!Number.isInteger(s.progress)||s.progress<0||s.progress>100))throw Error('Progress must be null or an integer from 0 to 100');
+ if(s.date!==null){if(!/^\d{4}-\d{1,2}-\d{1,2}$/.test(s.date))throw Error('Invalid date');const [y,m,d]=s.date.split('-').map(Number),v=new Date(y,m-1,d);if(v.getFullYear()!==y||v.getMonth()!==m-1||v.getDate()!==d)throw Error('Invalid calendar date');}
+ if(s.time!==null&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(s.time))throw Error('Invalid time');return s;
+}
+function resolveState(input,now){return{progress:input.progress,date:input.date??`${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`,time:input.time??`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`};}
+function renderTerminal(input,seconds=0,reduced=false,now=new Date()){
+ const s=resolveState(normalizeState(input),now);
+ return rect(0,0,1280,720,color.background)+dateComponent(s.date)+ghostComponent(s.progress,s.time,seconds,reduced)+daylightComponent(s.time,seconds,reduced)+percentComponent(s.progress)+timeComponent(s.time);
+}
+// One local adapter seam; no credentials, network requests or quota inference.
+window.pixelTerminal={setState(next){const accepted=normalizeState(next);Object.assign(state,accepted);},getState(){return{...state};},progressState,timeState,render:renderTerminal};
+const root=document.getElementById('terminal'),reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let previous=-1000;function tick(ts){if(ts-previous>=100){root.innerHTML=renderTerminal(state,ts/1000,reduce);previous=ts;}requestAnimationFrame(tick);}requestAnimationFrame(tick);
+</script>
+</body></html>
