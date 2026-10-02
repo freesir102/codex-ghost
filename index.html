@@ -230,14 +230,25 @@ function scheduledMoment(p,time,seconds,reduced=false){
  const cycle=Math.floor((seconds-20)/240),elapsed=seconds-20-cycle*240;
  return elapsed<8?{kind:choices[cycle%choices.length],elapsed,source:'automatic'}:null;
 }
-let manualMoment=null,lastMomentStatus={build:'2026-10-02-moments-r12',kind:null,stage:'idle',source:'ordinary'};
+const momentBuild='2026-10-02-moments-r12-review1';
+let manualMoment=null,automaticSuppressedUntil=0,lastMomentStatus={build:momentBuild,kind:null,stage:'idle',source:'ordinary'};
+function releaseMomentPreview(seconds){
+ manualMoment=null;
+ // Finish in the ordinary pose, keeping only the overlapping window quiet.
+ // The next scheduled cycle retains its original phase and selection.
+ if(seconds>=20){
+  const start=20+Math.floor((seconds-20)/240)*240;
+  if(seconds<start+8)automaticSuppressedUntil=Math.max(automaticSuppressedUntil,start+8);
+ }
+}
 function currentMoment(s,seconds,reduced){
- if(reduced){manualMoment=null;return null;}
+ if(reduced){if(manualMoment)releaseMomentPreview(seconds);return null;}
  if(manualMoment){
   const elapsed=seconds-manualMoment.startedAt;
   if(elapsed>=0&&elapsed<8&&allowedMoments(s.progress,s.time).includes(manualMoment.kind))return{kind:manualMoment.kind,elapsed,source:'preview'};
-  manualMoment=null;
+  releaseMomentPreview(seconds);return null;
  }
+ if(seconds<automaticSuppressedUntil)return null;
  return scheduledMoment(s.progress,s.time,seconds,reduced);
 }
 function normalizeState(next,base=state){
@@ -261,17 +272,17 @@ window.pixelTerminal={
   if(!allowedMoments(s.progress,s.time).includes(kind))throw Error('Moment does not match the current quota posture or time');
   manualMoment={kind,startedAt:performance.now()/1000};return{kind,duration_seconds:8};
  },
- stopMomentPreview(){manualMoment=null;},getMomentStatus(){return{...lastMomentStatus};}
+ stopMomentPreview(){if(manualMoment)releaseMomentPreview(performance.now()/1000);},getMomentStatus(){return{...lastMomentStatus};}
 };
 const root=document.getElementById('terminal'),motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
 let reduce=motionPreference.matches,previous=-1000;
-motionPreference.addEventListener?.('change',event=>{reduce=event.matches;if(reduce)manualMoment=null;previous=-1000;});
+motionPreference.addEventListener?.('change',event=>{reduce=event.matches;if(reduce&&manualMoment)releaseMomentPreview(performance.now()/1000);previous=-1000;});
 function tick(ts){
  if(ts-previous>=100){
   const seconds=ts/1000,now=new Date(),s=resolveState(state,now),candidate=currentMoment(s,seconds,reduce);
   const stage=candidate?momentState(candidate.kind,candidate.elapsed,reduce).stage:'idle',moment=stage==='idle'?null:candidate;
   root.innerHTML=renderTerminal(state,seconds,reduce,now,moment);
-  lastMomentStatus={build:'2026-10-02-moments-r12',kind:stage==='idle'?null:moment.kind,stage,source:stage==='idle'?'ordinary':moment.source};
+  lastMomentStatus={build:momentBuild,kind:stage==='idle'?null:moment.kind,stage,source:stage==='idle'?'ordinary':moment.source};
   previous=ts;
  }
  requestAnimationFrame(tick);

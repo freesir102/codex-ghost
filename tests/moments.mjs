@@ -186,6 +186,38 @@ for (const next of [stateFor(null), stateFor(65)]) {
   h.api.setState({time:'23:41'}); h.step(3_700); assertOrdinary(h, 'cancelled night preview cannot revive');
 }
 
+// A preview ending inside either automatic window must return to the ordinary
+// pose through the real frame callback, then resume the next scheduled cycle.
+for (const startedAt of [12_000,14_000,17_000,252_000,254_000,257_000]) {
+  const h = harness(); h.api.setState(stateFor(30)); h.step(startedAt);
+  h.api.startMomentPreview('shy-kiss'); h.step(startedAt + 2_500);
+  assert.equal(action(h.svg), 'shy-kiss'); assertReadback(h, 'preview');
+  const endedAt = startedAt + 8_000;
+  h.step(endedAt); assertOrdinary(h, 'overlapping preview expiry');
+  const cycle = Math.floor((endedAt - 20_000) / 240_000);
+  const windowEnd = 28_000 + cycle * 240_000;
+  h.step(windowEnd - 100); assertOrdinary(h, 'the rest of the overlapping window stays quiet');
+  h.step(windowEnd); assertOrdinary(h, 'overlapping window ends');
+  h.step(262_500 + cycle * 240_000);
+  assert.equal(action(h.svg), cycle % 2 === 0 ? 'shy-kiss' : 'apple-bite');
+  assertReadback(h, 'automatic');
+}
+for (const cancel of ['stop','posture','reduced-motion']) {
+  const h = harness(); h.api.setState(stateFor(30)); h.step(20_000);
+  h.api.startMomentPreview('shy-kiss'); h.step(22_500);
+  assert.equal(action(h.svg), 'shy-kiss'); assertReadback(h, 'preview');
+  if (cancel === 'stop') h.api.stopMomentPreview();
+  else if (cancel === 'posture') h.api.setState(stateFor(65));
+  else h.setReduced(true);
+  h.step(22_600); assertOrdinary(h, `overlapping preview cancellation: ${cancel}`);
+  if (cancel === 'reduced-motion') h.setReduced(false);
+  h.step(22_700); assertOrdinary(h, `cancelled preview cannot hand off to a scheduled moment: ${cancel}`);
+  h.step(27_900); assertOrdinary(h, `cancelled preview leaves a quiet window: ${cancel}`);
+  h.step(262_500);
+  assert.equal(action(h.svg), cancel === 'posture' ? 'playful-wink' : 'shy-kiss');
+  assertReadback(h, 'automatic');
+}
+
 // Initial reduction and live preference changes freeze all motion and cancel previews.
 for (const changeEvents of [true, false]) {
   const h = harness({reduced:true, changeEvents}); h.api.setState(stateFor(30)); h.step(0);

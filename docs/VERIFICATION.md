@@ -1,5 +1,29 @@
 # Verification
 
+## PR review follow-up — preview handoff, 2026-10-02
+
+The first connected Codex Cloud review of `9dda8b0` completed and reported a
+[P2 preview/automatic-window overlap](https://github.com/freesir102/codex-ghost/pull/1#discussion_r4166595460).
+The reported case was reproduced through the actual shipped frame callback:
+a preview beginning at page time 14 seconds incorrectly handed off to an
+automatic apple bite at 22 seconds. The new regression failed at that checkpoint
+before the implementation changed; it passes after the fix.
+
+Preview expiry, explicit stop, incompatible posture and reduced-motion
+cancellation now leave the overlapping automatic window quiet. The next cycle
+retains its original phase and selection. Regression checks cover expiry at the
+start, middle and late part of both the first and following automatic windows,
+plus cancellation and subsequent automatic resumption. `npm test` passes on
+local Node 26.7.0, including the unchanged eight-state rendering suite.
+
+The renderer identifies these working bytes as
+`2026-10-02-moments-r12-review1`. The installed native r12 below has not been
+replaced or revalidated for this follow-up. New-head GitHub checks and connected
+review results belong to [PR #1](https://github.com/freesir102/codex-ghost/pull/1).
+CI now uses the Node24-compatible checkout/setup-node v7 actions, preserves
+project Node22 and the existing test/build commands, and explicitly disables
+automatic package-manager caching. No account/quota code changed.
+
 ## Current r12 — five little moments, 2026-10-02
 
 Build `2026-10-02-native-r12` integrates the approved apple bite, shy kiss,
