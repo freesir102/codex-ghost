@@ -13,6 +13,10 @@ Black background. Crisp pixels. A fat red apple, a softly beating pink heart, an
 - Shows **Codex weekly remaining quota**, local date, and local time. The percentage is `100 − usedPercent`, rounded down; it is **not task progress**.
 - The ghost hugs an apple below 50%, floats at 50–79%, carries a red flag at 80–99%, and waves with a star at 100%.
 - Day and night have separate expressions/accessories. The apple pose alternates between smiling and a little kiss; the heart gently beats. The night moon stays still.
+- Five occasional little moments: apple bite, shy kiss, sleepy yawn, a small wave,
+  and both eyes squeezing inward (`> <`). A short compatible moment appears after
+  20 seconds, then about every four minutes. The base quota pose and numbers stay
+  intact; nighttime yawning uses the floating pose. Reduced motion cancels them.
 - Both cyan frames move together around a closed pixel perimeter. The numbers remain stationary; reduced motion also freezes the frames.
 - Uses native **AppKit + WKWebView** with bundled SVG. No Electron, Python, Node, or local web server is needed **to run the built app**.
 - Reads quota through the locally installed official Codex CLI and its existing login. No model prompts or conversations are sent by this app. Authentication stays with the official CLI.
@@ -37,7 +41,7 @@ The build script protects an existing build from accidental overwrite. Preserve 
 
 For live quota, keep an official Codex installation and an authenticated account available. The app checks common official app/Homebrew/local CLI locations. The CLI must support `app-server` and `account/rateLimits/read`. If it cannot read a valid weekly window, it shows `--%`; it does not invent a percentage or change your login. The app-server interface may change, so future official CLI updates can require adaptation.
 
-**Controls:** ⌘R refresh · ⌘F full screen · ⌘Q quit. The app menu can preview all eight synthetic animation states and then returns to real quota. Double-clicking a running app brings its existing window back, including after minimizing.
+**Controls:** ⌘R refresh · ⌘F full screen · ⌘Q quit. The app menu can preview all eight synthetic animation states or the five little moments, then returns to real quota. Double-clicking a running app brings its existing window back, including after minimizing.
 
 If a display name contains `Wokyis`, the app places itself there and enters native full screen. Otherwise it opens a normal window that you can move to your preferred display. Full screen auto-hides the menu bar and Dock.
 
@@ -76,6 +80,7 @@ This is an independent community project, not an official OpenAI application.
 
 - 低于50%抱胖红苹果；50–79%轻轻漂浮；80–99%举红旗；100%挥手和星星。
 - 苹果没有绿叶、特意画出的小手或热气；微笑和撅嘴交替。粉心轻轻跳动，太阳四条光线沿像素格转圈。
+- 加入偷咬苹果、害羞亲亲、困困打哈欠、轻轻挥手、双眼向内挤成 `> <` 五种小动作。首次打开约20秒展示一次，之后约四分钟一次；按当前姿态与昼夜轮换，减少动态效果时停用。菜单的“小动作预览（五种）”可完整观看，随后自动返回实时额度。
 - 两个较粗的青色边框同步顺时针流动，转角连续绕行，框内数字不动；开启减少动态效果时全部静止。
 - 本机编译成真正的 Mac App，运行无需终端或 Node/Python；真实额度依赖已登录的官方 Codex CLI与联网状态。
 - `bash build-app.sh` 构建后，从 Finder 双击 `build` 中的 **Codex 小幽灵.app**。⌘R刷新、⌘F全屏、⌘Q退出。

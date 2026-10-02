@@ -125,6 +125,121 @@ function ghostComponent(p,time,seconds=0,reduced=false){
  ['0001000','0001000','0011100','1111111','0011100','0001000','0001000'].forEach((row,j)=>[...row].forEach((v,i)=>{if(v==='1')star+=rect(428+i*6,220+j*6,6,6,color.yellow);}));s+=star+'</g>';
  }return s;
 }
+// Short, bounded character moments; the main quota posture remains authoritative.
+function momentState(kind,seconds=0,reduced=false){
+ if(!['apple-bite','shy-kiss','sleepy-yawn','little-wave','playful-wink'].includes(kind))throw Error('Unknown preview moment');
+ if(!Number.isFinite(seconds)||seconds<0)throw Error('Invalid preview time');
+ const t=seconds%8;
+ if(reduced||t<1||t>=6)return{kind,stage:'idle',lift:0,bite:false,kiss:false,heartLift:0,heartUnit:12};
+ if(kind==='sleepy-yawn'){
+  if(t<1.7)return{kind,stage:'sleepy'};
+  if(t<3.6)return{kind,stage:'yawn',wide:t>=2.1&&t<3.2};
+  if(t<4.3)return{kind,stage:'sleepy'};
+  return{kind,stage:'happy'};
+ }
+ if(kind==='little-wave'){
+  if(t<1.5||t>=3.9)return{kind,stage:'happy',arm:0};
+  const arm=[0,1,2,1,0,1,2,1][Math.min(7,Math.floor((t-1.5)/.3))];
+  return{kind,stage:'wave',arm};
+ }
+ if(kind==='playful-wink'){
+  if(t<1.6)return{kind,stage:'look'};
+  if(t<3)return{kind,stage:'squeeze'};
+  return{kind,stage:'happy'};
+ }
+ if(kind==='apple-bite'){
+  if(t<1.9)return{kind,stage:'raise',lift:Math.min(3,Math.floor((t-1)*4)),bite:false,kiss:false};
+  if(t<2.35)return{kind,stage:'bite',lift:3,bite:true,kiss:true};
+  if(t<3.7)return{kind,stage:'chew',lift:3,bite:true,kiss:false,chew:Math.floor((t-2.35)*4)%2};
+  if(t<4.6)return{kind,stage:'lower',lift:Math.max(0,3-Math.floor((t-3.7)*4)),bite:true,kiss:false};
+  return{kind,stage:'happy',lift:0,bite:true,kiss:false};
+ }
+ if(t<1.5)return{kind,stage:'blink',kiss:false,heartLift:0,heartUnit:12};
+ if(t<3.1)return{kind,stage:'kiss',kiss:true,heartLift:Math.min(10,Math.floor((t-1.5)*7)),heartUnit:t<1.9?13:14};
+ if(t<4)return{kind,stage:'happy',kiss:false,heartLift:Math.max(0,10-Math.floor((t-3.1)*12)),heartUnit:13};
+ return{kind,stage:'happy',kiss:false,heartLift:0,heartUnit:12};
+}
+function createMomentRenderer({ghost,heart,rect,colors}){
+ const mouth=(rows,x,y)=>rows.map((row,j)=>[...row].map((v,i)=>v==='1'?rect(x+i,y+j,1,1,'#000000'):'').join('')).join('');
+ return function renderMoment(kind,p,time,seconds=0,reduced=false){
+  const m=momentState(kind,seconds,reduced);
+  const appleMoment=['apple-bite','shy-kiss'].includes(kind);
+  const compatible=allowedMoments(p,time).includes(kind);
+  if(reduced||m.stage==='idle'||!compatible)return ghost(p,time,seconds,reduced);
+  // Reuse the existing character, face, apple, heart and right arm.
+  let s=ghost(p,time,0,true);
+  const marker=s.indexOf('<g data-accessory="heart"');
+  if(marker<0||(appleMoment&&!s.includes('data-accessory="apple"')))throw Error('Preview baseline unavailable');
+  let body=s.slice(0,marker);
+  body=body.replace(/<rect [^>]*fill="#000000"\/>/g,'');
+  body=body.replace(rect(15,14,2,1,colors.pink),'');
+  let face='<g data-moment-face="'+m.stage+'">';
+  const closed=['blink','chew','happy','lower','kiss','sleepy','yawn'].includes(m.stage);
+  if(m.stage==='squeeze')face+=mouth(['100','010','001','010','100'],9,8)+mouth(['001','010','100','010','001'],19,8);
+  else if(m.stage==='look')for(const x of [9,19])face+=mouth(['0110','1001','1001'],x,9);
+  else if(closed)for(const x of [10,19])face+=mouth(['1001','0110'],x,9);
+  else if(!appleMoment)for(const x of [9,19])face+=mouth(['0110','1001','1001'],x,9);
+  else for(const x of [10,19])face+=rect(x,9,2,1,'#000000');
+  if(m.kiss)face+=mouth(['1110','0001','0110','0001','1110'],14,12);
+  else if(m.stage==='yawn'){
+   face+=mouth(m.wide?['0110','1111','1111','1111','0110']:['010','111','111','010'],14,12);
+   if(m.wide)face+=rect(15,15,2,1,colors.pink);
+  }
+  else if(m.stage==='chew')face+=mouth(m.chew?['0110','0000']:['0000','1110'],14,13);
+  else if(!appleMoment&&kind!=='sleepy-yawn')face+=mouth(['1111','1111','0110'],14,12)+rect(15,13,2,1,colors.pink);
+  else face+=mouth(['1001','0110'],14,12);
+  face+='</g>';
+  if(kind==='apple-bite'){
+   const rows=['00111011100','01111111110','11111111111','11111111111','11111111111','11111111111','11111111111','01111111110','00111111100'];
+   let apple=`<g data-accessory="apple" data-moment-bite="${m.bite}" transform="translate(${-Math.min(3,m.lift)} ${-m.lift})">`;
+   apple+=rect(15,16,1,2,'#895b36');
+   rows.forEach((row,j)=>[...row].forEach((v,i)=>{
+    const missing=m.bite&&((j===1&&i>=9)||(j===2&&i>=9)||(j===3&&i>=10));
+    if(v==='1'&&!missing)apple+=rect(10+i,18+j,1,1,'#ef4545');
+   }));
+   apple+=rect(12,19,1,2)+ '</g>';
+   body=body.replace(/<g data-accessory="apple"[^>]*>[\s\S]*?<\/g>/,apple);
+  }
+  if(kind==='little-wave'){
+   const arm='<path d="M24 13h2v-2h2v1h1v3h-1v2h-4z" fill="#ffffff"/>';
+   const source=`<g transform="translate(0 0)">${arm}</g>`;
+   if(!body.includes(source))throw Error('Preview arm baseline unavailable');
+   body=body.replace(source,`<g data-moment-arm="${m.arm}" transform="translate(0 ${-m.arm})">${arm}</g>`);
+  }
+  if(m.stage==='squeeze')body=body.replace('translate(104 246)','translate(106 246)');
+  body=body.replace(/<\/g>$/,face+'</g>');
+  let h;
+  if(kind==='shy-kiss'){
+   const u=m.heartUnit,x=452-(u-12)*2,y=330-m.heartLift;
+   h='<g data-accessory="heart" data-moment-heart-lift="'+m.heartLift+'">';
+   ['01010','11111','11111','01110','00100'].forEach((row,j)=>[...row].forEach((v,i)=>{if(v==='1')h+=rect(x+i*u,y+j*u,u,u,colors.pink);}));h+='</g>';
+  }else h=heart(452,330,seconds,reduced);
+  return `<g data-moment="${kind}" data-moment-stage="${m.stage}">${body}${h}</g>`;
+ };
+}
+
+function allowedMoments(p,time){
+ if(p===null||p>=80)return[];
+ if(p<50)return['apple-bite','shy-kiss'];
+ return timeState(time)==='night'?['sleepy-yawn','little-wave','playful-wink']:['little-wave','playful-wink'];
+}
+const renderMomentGhost=createMomentRenderer({ghost:ghostComponent,heart,rect,colors:color});
+function scheduledMoment(p,time,seconds,reduced=false){
+ const choices=allowedMoments(p,time);
+ if(reduced||!choices.length||seconds<20)return null;
+ const cycle=Math.floor((seconds-20)/240),elapsed=seconds-20-cycle*240;
+ return elapsed<8?{kind:choices[cycle%choices.length],elapsed,source:'automatic'}:null;
+}
+let manualMoment=null,lastMomentStatus={build:'2026-10-02-moments-r12',kind:null,stage:'idle',source:'ordinary'};
+function currentMoment(s,seconds,reduced){
+ if(reduced){manualMoment=null;return null;}
+ if(manualMoment){
+  const elapsed=seconds-manualMoment.startedAt;
+  if(elapsed>=0&&elapsed<8&&allowedMoments(s.progress,s.time).includes(manualMoment.kind))return{kind:manualMoment.kind,elapsed,source:'preview'};
+  manualMoment=null;
+ }
+ return scheduledMoment(s.progress,s.time,seconds,reduced);
+}
 function normalizeState(next,base=state){
  const s={...base,...next};
  if(s.progress!==null&&(!Number.isInteger(s.progress)||s.progress<0||s.progress>100))throw Error('Progress must be null or an integer from 0 to 100');
@@ -132,13 +247,34 @@ function normalizeState(next,base=state){
  if(s.time!==null&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(s.time))throw Error('Invalid time');return s;
 }
 function resolveState(input,now){return{progress:input.progress,date:input.date??`${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`,time:input.time??`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`};}
-function renderTerminal(input,seconds=0,reduced=false,now=new Date()){
+function renderTerminal(input,seconds=0,reduced=false,now=new Date(),moment=null){
  const s=resolveState(normalizeState(input),now);
- return rect(0,0,1280,720,color.background)+dateComponent(s.date)+ghostComponent(s.progress,s.time,seconds,reduced)+daylightComponent(s.time,seconds,reduced)+percentComponent(s.progress,seconds,reduced)+timeComponent(s.time,seconds,reduced);
+ return rect(0,0,1280,720,color.background)+dateComponent(s.date)+(moment?renderMomentGhost(moment.kind,s.progress,s.time,moment.elapsed,reduced):ghostComponent(s.progress,s.time,seconds,reduced))+daylightComponent(s.time,seconds,reduced)+percentComponent(s.progress,seconds,reduced)+timeComponent(s.time,seconds,reduced);
 }
 // One local adapter seam; no credentials, network requests or quota inference.
-window.pixelTerminal={setState(next){const accepted=normalizeState(next);Object.assign(state,accepted);},getState(){return{...state};},progressState,timeState,render:renderTerminal};
-const root=document.getElementById('terminal'),reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let previous=-1000;function tick(ts){if(ts-previous>=100){root.innerHTML=renderTerminal(state,ts/1000,reduce);previous=ts;}requestAnimationFrame(tick);}requestAnimationFrame(tick);
+window.pixelTerminal={
+ setState(next){const accepted=normalizeState(next);Object.assign(state,accepted);},getState(){return{...state};},
+ progressState,timeState,render:renderTerminal,
+ renderMoment(input,kind,elapsed,reduced=false,now=new Date()){momentState(kind,elapsed,reduced);return renderTerminal(input,elapsed,reduced,now,{kind,elapsed});},
+ startMomentPreview(kind){
+  momentState(kind,0);const s=resolveState(state,new Date());
+  if(!allowedMoments(s.progress,s.time).includes(kind))throw Error('Moment does not match the current quota posture or time');
+  manualMoment={kind,startedAt:performance.now()/1000};return{kind,duration_seconds:8};
+ },
+ stopMomentPreview(){manualMoment=null;},getMomentStatus(){return{...lastMomentStatus};}
+};
+const root=document.getElementById('terminal'),motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
+let reduce=motionPreference.matches,previous=-1000;
+motionPreference.addEventListener?.('change',event=>{reduce=event.matches;if(reduce)manualMoment=null;previous=-1000;});
+function tick(ts){
+ if(ts-previous>=100){
+  const seconds=ts/1000,now=new Date(),s=resolveState(state,now),candidate=currentMoment(s,seconds,reduce);
+  const stage=candidate?momentState(candidate.kind,candidate.elapsed,reduce).stage:'idle',moment=stage==='idle'?null:candidate;
+  root.innerHTML=renderTerminal(state,seconds,reduce,now,moment);
+  lastMomentStatus={build:'2026-10-02-moments-r12',kind:stage==='idle'?null:moment.kind,stage,source:stage==='idle'?'ordinary':moment.source};
+  previous=ts;
+ }
+ requestAnimationFrame(tick);
+}requestAnimationFrame(tick);
 </script>
 </body></html>

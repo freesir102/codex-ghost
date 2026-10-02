@@ -1,6 +1,42 @@
 # Verification
 
-## Current r11 — flowing frame, 2026-10-02
+## Current r12 — five little moments, 2026-10-02
+
+Build `2026-10-02-native-r12` integrates the approved apple bite, shy kiss,
+sleepy yawn, little wave and simultaneous inward eye squeeze (`> <`) into the
+self-contained bundled HTML. No additional renderer runtime or network resource.
+
+- The actual frame callback dispatches short compatible moments after 20 seconds,
+  then every 240 seconds, with quiet periods and exact ordinary phase restoration.
+- New synthetic tests pass through that callback for all five automatic and
+  explicit preview paths, fixed digits/accessories, state refresh, atomic rejection,
+  unknown/incompatible posture, daytime yawn refusal and live reduced-motion changes.
+- Generated GIF action pixels, eight-second playback durations and the standalone
+  review page callback pass. Static renders were visually inspected.
+- Native arm64 compilation, bundle resource/source matching, plist, strict ad-hoc
+  signature and system-only dynamic library checks pass.
+- The installed r12 was launched by a real Finder double-click at
+  2026-10-02T13:27:41Z, on Wokyis in native full screen. Loaded HTML and executable
+  hashes matched the actual working source/build. One instance held its lock.
+- Real WKWebView five-moment checks completed at 2026-10-02T13:28:36Z. Native
+  snapshots verified the apple bite and restoration, enlarged kiss heart, wider
+  yawn mouth, moving existing arm and both inward eye chevrons. All five returned
+  to the ordinary pose, with fixed date and number pixels unchanged.
+- All eight existing day/night states completed at 2026-10-02T13:30:53Z. Actual
+  ghost and both frame regions changed while the digit interiors stayed fixed.
+  The app returned to live quota, with repeated fresh automatic reads observed.
+- The prior r11 was normally quit before installation. An extracted r11 rollback
+  passed file hashes, restored permissions and strict signature verification.
+  Duplicate expanded old bundles were retired after those checks. No account
+  data, runtime logs or native personal screenshots are included in public source.
+- Occasional scheduling and preference-change guards were verified through the
+  actual synthetic frame callback; real native action observations used the
+  explicit menu preview. This does not claim a long-duration native cadence or
+  native system-preference-toggle test. Quota parsing remains unchanged.
+
+The r11 observations below retain their original time and implementation identity.
+
+## Historical r11 — flowing frame, 2026-10-02
 
 Build `2026-10-02-native-r11` uses cyan dash-dot frames moving clockwise on
 an explicit 2px grid. The native build was installed and launched by a real

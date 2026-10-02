@@ -7,7 +7,8 @@ if [ -f "$app/Contents/MacOS/PixelCompanion" ]; then
   exit 1
 fi
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-xcrun swiftc -O -swift-version 5 -target arm64-apple-macos14.0 native/Quota.swift native/PixelTerminal.swift -framework AppKit -framework WebKit -o "$app/Contents/MacOS/PixelCompanion"
+mkdir -p build/swift-module-cache
+xcrun swiftc -O -swift-version 5 -module-cache-path build/swift-module-cache -target arm64-apple-macos14.0 native/Quota.swift native/PixelTerminal.swift -framework AppKit -framework WebKit -o "$app/Contents/MacOS/PixelCompanion"
 cp index.html "$app/Contents/Resources/index.html"
 cp native/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 cat > "$app/Contents/Info.plist" <<'PLIST'
@@ -21,7 +22,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>1.0.0</string>
-<key>CFBundleVersion</key><string>11</string>
+<key>CFBundleVersion</key><string>12</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
