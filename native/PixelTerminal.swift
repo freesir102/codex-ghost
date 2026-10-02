@@ -2,7 +2,7 @@ import AppKit
 import WebKit
 import CryptoKit
 
-let buildID = "2026-10-02-native-r10"
+let buildID = "2026-10-02-native-r11"
 func sha256(_ url: URL) -> String { ((try? Data(contentsOf: url)).map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() }) ?? "unavailable" }
 final class CompanionWindow: NSWindow { override var canBecomeKey: Bool { true }; override var canBecomeMain: Bool { true } }
 

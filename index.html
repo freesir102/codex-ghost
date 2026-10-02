@@ -28,16 +28,44 @@ function textPixels(text,box,unit){
  let x=box.x+(box.w-width)/2,y=box.y+(box.h-unit*7)/2,out='';
  for(const ch of text){font[ch].forEach((row,dy)=>[...row].forEach((p,dx)=>{if(p==='1')out+=rect(x+dx*unit,y+dy*unit,unit,unit);}));x+=(font[ch][0].length+2)*unit;}return out;
 }
-function pixelFrame(b){
- const t=14,c=color.cyan;let s='';
- // Thick square pixel dashes; no smooth outlines or lighting effects.
- for(const [x,y,sx,sy]of[[b.x,b.y,1,1],[b.x+b.w-t,b.y,-1,1],[b.x,b.y+b.h-t,1,-1],[b.x+b.w-t,b.y+b.h-t,-1,-1]])s+=rect(x+sx*t,y,t*2,t,c)+rect(x,y+sy*t,t,t*2,c);
- for(let x=b.x+48;x<b.x+b.w-48;x+=64){const w=Math.min(32,b.x+b.w-48-x);s+=rect(x,b.y,w,t,c)+rect(x,b.y+b.h-t,w,t,c);}
- for(let y=b.y+48;y<b.y+b.h-48;y+=52){const h=Math.min(26,b.y+b.h-48-y);s+=rect(b.x,y,t,h,c)+rect(b.x+b.w-t,y,t,h,c);}return s;
+function pixelFrame(b,seconds=0,reduced=false){
+ const grid=2,radius=7,width=b.w-radius*2,height=b.h-radius*2,length=2*(width+height);
+ const cycle=length/grid,phase=reduced?0:((Math.floor(seconds*10)%cycle)+cycle)%cycle;
+ const count=Math.round(length/80),period=length/count,rows=new Map();
+ // Dash + dot travel clockwise on one closed perimeter. Rasterized caps keep
+ // the reference's softer shape on an explicit pixel grid, including corners.
+ function point(distance){
+  let d=((distance%length)+length)%length,x=b.x+radius,y=b.y+radius;
+  if(d<width)return[x+d,y];d-=width;
+  if(d<height)return[x+width,y+d];d-=height;
+  if(d<width)return[x+width-d,y+height];d-=width;
+  return[x,y+height-d];
+ }
+ function stamp(distance){
+  const [cx,cy]=point(distance);
+  const minX=Math.max(0,Math.floor((cx-radius-b.x)/grid)),maxX=Math.min(b.w/grid-1,Math.floor((cx+radius-b.x)/grid));
+  const minY=Math.max(0,Math.floor((cy-radius-b.y)/grid)),maxY=Math.min(b.h/grid-1,Math.floor((cy+radius-b.y)/grid));
+  for(let j=minY;j<=maxY;j++)for(let i=minX;i<=maxX;i++){
+   if((b.x+i*grid+grid/2-cx)**2+(b.y+j*grid+grid/2-cy)**2>radius**2)continue;
+   if(!rows.has(j))rows.set(j,new Set());rows.get(j).add(i);
+  }
+ }
+ for(let i=0;i<count;i++){
+  const start=i*period+phase*grid;
+  for(let d=radius;d<=36-radius;d+=grid)stamp(start+d);
+  stamp(start+57);
+ }
+ let s=`<g data-component="frame" data-pattern="dash-dot" data-phase="${phase}">`;
+ for(const [j,cells]of [...rows].sort((a,b)=>a[0]-b[0])){
+  const columns=[...cells].sort((a,b)=>a-b);let start=columns[0],end=start;
+  for(const i of columns.slice(1)){if(i===end+1){end=i;continue;}s+=rect(b.x+start*grid,b.y+j*grid,(end-start+1)*grid,grid,color.cyan);start=end=i;}
+  s+=rect(b.x+start*grid,b.y+j*grid,(end-start+1)*grid,grid,color.cyan);
+ }
+ return s+'</g>';
 }
 function dateComponent(date){return `<g data-component="date">${textPixels(date,layout.date,8)}</g>`;}
-function percentComponent(progress){return `<g data-component="percent">${pixelFrame(layout.percent)}${textPixels(`${progress===null?'--':progress}%`,layout.percent,18)}</g>`;}
-function timeComponent(time){return `<g data-component="time">${pixelFrame(layout.time)}${textPixels(time,layout.time,16)}</g>`;}
+function percentComponent(progress,seconds=0,reduced=false){return `<g data-component="percent">${pixelFrame(layout.percent,seconds,reduced)}<g data-component="digits">${textPixels(`${progress===null?'--':progress}%`,layout.percent,18)}</g></g>`;}
+function timeComponent(time,seconds=0,reduced=false){return `<g data-component="time">${pixelFrame(layout.time,seconds,reduced)}<g data-component="digits">${textPixels(time,layout.time,16)}</g></g>`;}
 function progressState(p){return p===100?'celebrating':p>=80?'flag':p>=50?'floating':'apple';}
 function timeState(time){const h=Number(time.slice(0,2));return h>=20||h<7?'night':'day';}
 function heart(x,y,seconds=0,reduced=false){
@@ -106,7 +134,7 @@ function normalizeState(next,base=state){
 function resolveState(input,now){return{progress:input.progress,date:input.date??`${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`,time:input.time??`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`};}
 function renderTerminal(input,seconds=0,reduced=false,now=new Date()){
  const s=resolveState(normalizeState(input),now);
- return rect(0,0,1280,720,color.background)+dateComponent(s.date)+ghostComponent(s.progress,s.time,seconds,reduced)+daylightComponent(s.time,seconds,reduced)+percentComponent(s.progress)+timeComponent(s.time);
+ return rect(0,0,1280,720,color.background)+dateComponent(s.date)+ghostComponent(s.progress,s.time,seconds,reduced)+daylightComponent(s.time,seconds,reduced)+percentComponent(s.progress,seconds,reduced)+timeComponent(s.time,seconds,reduced);
 }
 // One local adapter seam; no credentials, network requests or quota inference.
 window.pixelTerminal={setState(next){const accepted=normalizeState(next);Object.assign(state,accepted);},getState(){return{...state};},progressState,timeState,render:renderTerminal};

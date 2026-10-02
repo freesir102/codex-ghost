@@ -2,7 +2,7 @@
 
 **A quiet pixel companion for your Mac — a tiny ghost, your Codex quota, and the time.**
 
-Black background. Crisp pixels. A fat red apple, a softly beating pink heart, and a little sun with rotating rays. Made to sit quietly on a small desk display.
+Black background. Crisp pixels. A fat red apple, a softly beating pink heart, and a little sun with rotating rays. Thick cyan dash-dot frames drift quietly clockwise around the numbers. Made to sit quietly on a small desk display.
 
 ![Codex Ghost animated demo](docs/demo.gif)
 
@@ -13,6 +13,7 @@ Black background. Crisp pixels. A fat red apple, a softly beating pink heart, an
 - Shows **Codex weekly remaining quota**, local date, and local time. The percentage is `100 − usedPercent`, rounded down; it is **not task progress**.
 - The ghost hugs an apple below 50%, floats at 50–79%, carries a red flag at 80–99%, and waves with a star at 100%.
 - Day and night have separate expressions/accessories. The apple pose alternates between smiling and a little kiss; the heart gently beats. The night moon stays still.
+- Both cyan frames move together around a closed pixel perimeter. The numbers remain stationary; reduced motion also freezes the frames.
 - Uses native **AppKit + WKWebView** with bundled SVG. No Electron, Python, Node, or local web server is needed **to run the built app**.
 - Reads quota through the locally installed official Codex CLI and its existing login. No model prompts or conversations are sent by this app. Authentication stays with the official CLI.
 - Single instance, 60-second refresh, and an explicit unknown `--%` state. A recent successful value is kept for at most 120 seconds, never past its quota reset time.
@@ -71,10 +72,11 @@ This is an independent community project, not an official OpenAI application.
 
 ## 中文
 
-**在小屏幕上安静陪伴你的 Codex 小幽灵。** 黑底、白色像素、青色虚线框，只显示日期、每周剩余额度和时间。
+**在小屏幕上安静陪伴你的 Codex 小幽灵。** 黑底、白色像素、青色长线段与圆点边框，只显示日期、每周剩余额度和时间。
 
 - 低于50%抱胖红苹果；50–79%轻轻漂浮；80–99%举红旗；100%挥手和星星。
 - 苹果没有绿叶、特意画出的小手或热气；微笑和撅嘴交替。粉心轻轻跳动，太阳四条光线沿像素格转圈。
+- 两个较粗的青色边框同步顺时针流动，转角连续绕行，框内数字不动；开启减少动态效果时全部静止。
 - 本机编译成真正的 Mac App，运行无需终端或 Node/Python；真实额度依赖已登录的官方 Codex CLI与联网状态。
 - `bash build-app.sh` 构建后，从 Finder 双击 `build` 中的 **Codex 小幽灵.app**。⌘R刷新、⌘F全屏、⌘Q退出。
 - 百分比代表**每周剩余额度**，不是任务完成率。无法读取时显示 `--%`。顶部演示动画是合成示例，不是个人账号数据。
